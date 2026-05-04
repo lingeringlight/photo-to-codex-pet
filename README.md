@@ -4,6 +4,12 @@
 > [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 > [![Codex Skill](https://img.shields.io/badge/Codex-Skill-blueviolet)](SKILL.md)
 
+**Language / 语言**: [中文](#中文说明) · [English](#english-version)
+
+---
+
+## 中文说明
+
 **Photo To Codex Pet** 是一个 Codex skill：上传或指定一张人物照片，它会帮你生成卡通或写实风格的 Codex 桌宠，并自动准备动作、图集、配置文件和校验预览。
 
 它不是只生成一张静态头像，而是面向桌宠使用场景，支持生成多个语义动作：
@@ -335,3 +341,342 @@ photo-to-codex-pet/
 ## 许可证
 
 MIT — 可以自由使用、修改和分享。
+
+---
+
+## English Version
+
+# Photo To Codex Pet.skill
+
+> *"Turn a photo into a Codex desktop pet that keeps you company while you work."*  
+> [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> [![Codex Skill](https://img.shields.io/badge/Codex-Skill-blueviolet)](SKILL.md)
+
+**Photo To Codex Pet** is a Codex skill that turns a local or uploaded person photo into a configured Codex desktop pet. It can create either a cartoon pet or a photo-faithful realistic pet, prepare semantic actions, build the pet spritesheet, write configuration files, and generate validation previews.
+
+It is not just a static avatar generator. It is designed for desktop-pet workflows and supports multiple semantic actions:
+
+```text
+working, resting, thinking, gaming, vacation, happy, angry
+```
+
+[Examples](#examples) · [Installation](#installation) · [Quick Start](#quick-start) · [How It Works](#how-it-works) · [Repository Structure](#repository-structure) · [FAQ](#faq-1)
+
+---
+
+## Examples
+
+### Realistic Mode
+
+Use this mode when you want the desktop pet to stay as close as possible to the original photo.
+
+```text
+User ❯ Use $photo-to-codex-pet to turn ~/Pictures/me.jpg into a realistic Codex desktop pet.
+       Name it 小明2号, use pet-id xiaoming2,
+       and include actions: working, resting, thinking, gaming, vacation, happy, angry.
+
+Codex ❯ Generated and configured:
+       ~/.codex/pets/xiaoming2/pet.json
+       ~/.codex/pets/xiaoming2/spritesheet.webp
+
+       Validation passed: 1536x1872, WEBP, RGBA, no errors or warnings.
+```
+
+Realistic mode tries to preserve:
+
+- face shape, hairstyle, hair volume, and hair parting
+- glasses shape, expression, and skin tone impression
+- clothing, colors, suit texture, and tie
+- overall posture and visual presence from the source photo
+
+It explicitly avoids:
+
+- chibi proportions
+- oversized eyes
+- anime redesign
+- outfit changes
+- turning the person into a generic avatar
+
+### Cartoon Mode
+
+Use this mode when you want a cuter, more desktop-pet-like character.
+
+```text
+User ❯ Use $photo-to-codex-pet to turn ~/Pictures/me.jpg into a cartoon Codex desktop pet.
+       Name it 小明 and use pet-id xiaoming.
+
+Codex ❯ Generated a cartoon desktop pet and packaged it under:
+       ~/.codex/pets/xiaoming/
+```
+
+Cartoon mode preserves high-level identity cues while making the result feel more like a small pixel-adjacent or flat-shaded desktop companion.
+
+---
+
+## Installation
+
+### Option 1: Ask Codex To Install From GitHub
+
+In Codex, say:
+
+```text
+Install this Codex skill from https://github.com/lingeringlight/photo-to-codex-pet,
+then use it to create a desktop pet from my photo.
+```
+
+### Option 2: Clone Into The Codex Skills Directory
+
+```bash
+git clone https://github.com/lingeringlight/photo-to-codex-pet.git \
+  "${CODEX_HOME:-$HOME/.codex}/skills/photo-to-codex-pet"
+```
+
+Then restart Codex, or open a new thread so the skill list refreshes.
+
+### Option 3: If Your Environment Supports A Skills CLI
+
+```bash
+npx skills add lingeringlight/photo-to-codex-pet
+```
+
+---
+
+## Quick Start
+
+Put your photo somewhere easy to reference, for example:
+
+```text
+~/Pictures/codex-pets/me.jpg
+```
+
+Then ask Codex:
+
+```text
+Use $photo-to-codex-pet to turn ~/Pictures/codex-pets/me.jpg into a realistic Codex desktop pet.
+Name it 小明2号, use pet-id xiaoming2,
+and include actions: working, resting, thinking, gaming, vacation, happy, angry.
+```
+
+For cartoon style:
+
+```text
+Use $photo-to-codex-pet to turn ~/Pictures/codex-pets/me.jpg into a cartoon Codex desktop pet.
+Name it 小明, use pet-id xiaoming,
+and include actions: working, resting, thinking, gaming, vacation, happy, angry.
+```
+
+After completion, the pet is installed under:
+
+```text
+${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/
+  pet.json
+  spritesheet.webp
+```
+
+If it does not appear immediately, restart the Codex app or reopen the desktop pet picker.
+
+---
+
+## Manual Preparation Command
+
+This helper script creates a reproducible run folder and writes the base prompt plus action prompts. It does not generate the full pet by itself; Codex continues by calling `$imagegen` and `$hatch-pet`.
+
+```bash
+python "${CODEX_HOME:-$HOME/.codex}/skills/photo-to-codex-pet/scripts/start_photo_pet_run.py" \
+  --photo /absolute/path/to/person-photo.jpg \
+  --pet-name "小明2号" \
+  --pet-id xiaoming2 \
+  --style realistic \
+  --actions "办公,休息,思考,游戏,度假,开心,生气" \
+  --force
+```
+
+Arguments:
+
+| Argument | Purpose |
+|---|---|
+| `--photo` | Absolute path to the person photo |
+| `--pet-name` | Display name shown in Codex |
+| `--pet-id` | Stable ASCII package and folder id, strongly recommended |
+| `--style` | `cartoon` or `realistic` |
+| `--actions` | Comma-separated action list |
+| `--force` | Overwrite existing run metadata |
+
+---
+
+## What It Produces
+
+Run folder:
+
+```text
+${CODEX_HOME:-$HOME/.codex}/pet-runs/<pet-id>/
+  photo-pet-request.json
+  references/
+    person-reference.jpg
+    canonical-base.png
+  prompts/
+    base-character.md
+    actions/
+      01-*.md
+      02-*.md
+      ...
+```
+
+Installed pet folder:
+
+```text
+${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/
+  pet.json
+  spritesheet.webp
+  _conversion_qa/
+    contact-sheet.png
+    action-preview.png
+    validation.json
+```
+
+Codex recognizes the final pet from:
+
+```text
+pet.json
+spritesheet.webp
+```
+
+The generated `spritesheet.webp` follows the standard Codex desktop pet atlas:
+
+```text
+1536 x 1872
+8 columns x 9 rows
+192 x 208 per cell
+RGBA / transparent background
+```
+
+---
+
+## How It Works
+
+Given one person photo, this skill does four things.
+
+**1. Builds a canonical character**
+
+Codex reads the photo and generates a `canonical-base`. Cartoon mode stylizes it into a desktop pet. Realistic mode keeps it as close to the original photo as possible.
+
+**2. Generates semantic actions**
+
+Default actions:
+
+| Action | Meaning |
+|---|---|
+| working | focused work pose with a small laptop or document |
+| resting | relaxed pose, cup or rest gesture |
+| thinking | chin-hand or focused thinking pose |
+| gaming | small controller or playful gaming gesture |
+| vacation | relaxed travel mood without a large background |
+| happy | smile, celebration, or wave |
+| angry | annoyed expression or clenched fists, nonviolent |
+
+Every action keeps the identity locked:
+
+- same face
+- same hairstyle
+- same glasses
+- same outfit
+- same overall silhouette
+
+**3. Maps actions into Codex's fixed atlas**
+
+Codex desktop pets currently use a fixed 9-row atlas. Semantic actions are mapped into those rows:
+
+| Codex Row | Source Action |
+|---|---|
+| `idle` | base / happy |
+| `running-right` | gaming or generic motion |
+| `running-left` | mirrored motion |
+| `waving` | happy |
+| `jumping` | vacation or happy |
+| `failed` | angry |
+| `waiting` | resting / thinking |
+| `running` | gaming or generic motion |
+| `review` | working / thinking |
+
+**4. Validates and installs**
+
+The skill writes `pet.json` and `spritesheet.webp`, then validates:
+
+- atlas dimensions
+- transparent unused cells
+- transparent background
+- Codex-readable atlas format
+
+---
+
+## Repository Structure
+
+```text
+photo-to-codex-pet/
+├── SKILL.md
+├── README.md
+├── LICENSE
+├── agents/
+│   └── openai.yaml
+└── scripts/
+    └── start_photo_pet_run.py
+```
+
+`SKILL.md` is the workflow guide for Codex.  
+`start_photo_pet_run.py` is the reproducible preparation script.  
+Image generation and pet packaging are handled by Codex through `$imagegen` and `$hatch-pet`.
+
+---
+
+## FAQ
+
+### Why do I need `pet-id`?
+
+Chinese names, spaces, and special characters are not ideal as stable folder names. Use:
+
+```text
+name it 小明2号, use pet-id xiaoming2
+```
+
+### Why is realistic mode not a perfect photo cutout?
+
+A desktop pet needs a transparent background, a full-body sprite, and small-size readability. Realistic mode tries to stay close to the photo, but still adapts the result slightly so it works inside a `192x208` pet cell.
+
+### Can I customize actions?
+
+Yes:
+
+```text
+include actions: reading, coding, drinking coffee, happy, angry.
+```
+
+Or from the command line:
+
+```bash
+--actions "reading,coding,drinking coffee,happy,angry"
+```
+
+### The generated pet still has a green background. What should I do?
+
+Ask Codex:
+
+```text
+Remove the green chroma-key background again and validate that spritesheet.webp passes the Codex atlas check.
+```
+
+### The pet does not appear in Codex. What should I check?
+
+Make sure these files exist:
+
+```text
+~/.codex/pets/<pet-id>/pet.json
+~/.codex/pets/<pet-id>/spritesheet.webp
+```
+
+Then restart the Codex app.
+
+---
+
+## License
+
+MIT — free to use, modify, and share.
