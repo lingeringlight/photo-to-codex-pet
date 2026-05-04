@@ -1,0 +1,4 @@
+interface:
+  display_name: "Photo to Codex Pet"
+  short_description: "Turn a person photo into a configured Codex desktop pet"
+  default_prompt: "Use $photo-to-codex-pet to create a configured Codex desktop pet from this person photo."
