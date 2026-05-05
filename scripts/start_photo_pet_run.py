@@ -23,14 +23,15 @@ def slugify(value: str) -> str:
 def style_notes(style: str) -> str:
     if style == "realistic":
         return (
-            "Photo-faithful realistic Codex desktop pet mode. Preserve the source photo pixels "
-            "for the visible face, hair, and outfit whenever possible, then complete any missing "
-            "lower body conservatively from the visible clothing so the pet reads as a complete "
-            "desktop character. Match face shape, hairstyle, expression, skin tone impression, "
-            "outfit, colors, posture, and clothing details as closely as possible. Use natural "
-            "proportions and realistic-to-clean avatar rendering. Do not chibi-fy, do not enlarge "
-            "the eyes, do not convert to anime, do not repaint the face, and do not invent a "
-            "different outfit. Only simplify enough for a readable transparent desktop pet sprite."
+            "Photo-faithful realistic Codex desktop pet mode. Use the source photo as the identity "
+            "reference to create one coherent full-body realistic portrait/avatar, not a pasted "
+            "collage. Match face shape, hairstyle, bangs, hair length, expression, skin tone "
+            "impression, outfit style, colors, posture, and clothing details as closely as possible. "
+            "If the photo is a headshot or ID photo, infer the missing lower body from the visible "
+            "outfit so the whole character looks unified in lighting, scale, camera language, and "
+            "material. Do not chibi-fy, do not enlarge the eyes, do not convert to anime, do not "
+            "paste a photo head onto a mismatched drawn body, and do not invent a different outfit. "
+            "Only simplify enough for a readable transparent desktop pet sprite."
         )
     return (
         "Cartoon chibi Codex desktop pet style, pixel-art-adjacent stepped edges, thick dark "
@@ -119,20 +120,19 @@ def base_prompt(name: str, style: str, notes: str) -> str:
     mode = "photo-faithful realistic desktop pet cutout/avatar" if style == "realistic" else "cartoon chibi desktop pet"
     if style == "realistic":
         subject = (
-            "Photo-faithful realistic desktop pet character based directly on the reference person photo. "
-            "Maximize likeness and photo fidelity by preserving the source-photo face, hair, and visible "
-            "torso/outfit whenever possible. Match the visible face shape, hairstyle, hair volume and "
-            "parting, glasses shape, expression, skin tone impression, clothing, colors, suit texture, "
-            "tie, and overall posture. If the photo is a headshot, ID photo, or half-body portrait, "
-            "complete the missing lower body conservatively from the visible outfit so the result is a "
-            "complete desktop pet character: matching skirt/trousers, simple legs, socks, and shoes as "
-            "appropriate. Do not alter the face or upper-body identity while completing the body. Do not "
-            "identify the person or add text."
+            "Photo-faithful realistic full-body desktop pet character based directly on the reference "
+            "person photo. Maximize likeness and photo fidelity, but make the output a single coherent "
+            "full-body portrait/avatar rather than a cut-and-paste composite. Match the visible face "
+            "shape, hairstyle, bangs, hair volume and parting, expression, skin tone impression, clothing, "
+            "colors, suit texture, tie or bow, and overall posture. If the photo is a headshot, ID photo, "
+            "or half-body portrait, infer the missing lower body from the visible outfit so the full body "
+            "looks natural, unified, and plausible in the same lighting and style. Do not identify the "
+            "person or add text."
         )
         avoid = (
             "no text, no watermark, no logo, no scenery, no cast shadow, no detached decorative effects, "
-            "no chibi proportions, no oversized eyes, no anime redesign, no different outfit, no face repaint, "
-            "no glossy 3D render."
+            "no chibi proportions, no oversized eyes, no anime redesign, no different outfit, no pasted-photo "
+            "head, no mismatched drawn body, no visible seam, no glossy 3D render."
         )
     else:
         subject = (
@@ -151,7 +151,7 @@ Subject: {subject}
 Pet name: {name}
 Style notes: {style_notes(style)}
 User notes: {notes or "None."}
-Composition: one complete character centered, front-facing 3/4 pose, generous padding, no cropping. In realistic mode, keep the original photo cutout as the upper-body identity source and add only the missing lower body when needed.
+Composition: one complete character centered, front-facing 3/4 pose, generous padding, no cropping. In realistic mode, the whole character must look coherent like one generated/edited photo or realistic avatar, not a local collage.
 Background: perfectly flat solid #00ff00 chroma-key background for background removal. The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation. Do not use #00ff00 anywhere in the subject.
 Avoid: {avoid}
 """
