@@ -34,6 +34,20 @@ Optional:
 
 ## Workflow
 
+This workflow is intentionally generation-first and animation-first. The expected pipeline is:
+
+```text
+uploaded/local photo
+-> inspect photo
+-> generate one coherent full-body canonical base from the photo
+-> design Codex event behavior against fixed row names
+-> generate true multi-frame row strips grounded by the photo and canonical base
+-> assemble Codex atlas
+-> validate, preview, install, and map states
+```
+
+Do not shorten this into local cutout/body-pasting or static pose duplication. Local image processing is only for deterministic transparency cleanup, frame extraction, atlas assembly, validation, and previews after the source visuals have been generated.
+
 1. If the photo is a local path, inspect it with the available image-viewing tool before using it as an image generation reference.
 2. Ask for `cartoon` or `realistic` if the user did not choose.
 3. Create a run folder with the helper script:
@@ -93,6 +107,20 @@ Attach the uploaded/local photo as the reference image. The output should be a f
 
 Attach both the original photo and `canonical-base.png` for each action prompt. The action rows should preserve the same identity and outfit while changing pose, mood, or small held prop. For `realistic`, action rows should look like the same full-body person in a coherent realistic style; do not create a pasted-photo face on a mismatched drawn body.
 
+For Codex-ready animation rows, prefer the fixed-row prompts written under:
+
+```text
+<run-dir>/prompts/codex-rows/
+```
+
+The helper script also writes:
+
+```text
+<run-dir>/codex-status-behavior-map.json
+```
+
+Use those row prompts as the source of truth when the user wants desktop-state behavior. Each row prompt already includes the Codex event trigger, semantic action, required frame count, and frame-by-frame motion beats.
+
 Important: do not satisfy an animated state by generating one static pose and copying it across every frame. Each fixed Codex row must be a coherent multi-frame strip:
 
 - `idle`: 6 frames.
@@ -132,6 +160,47 @@ python "${CODEX_HOME:-$HOME/.codex}/skills/hatch-pet/scripts/make_contact_sheet.
 ```
 
 11. Tell the user to restart Codex App or reopen the desktop pet picker if it does not appear immediately.
+
+## Non-Negotiable Quality Gates
+
+- Full-body completion must be generated from the photo through `$imagegen`, not assembled locally by pasting a face/head onto a body.
+- Realistic mode must maximize likeness to the source photo while making one coherent full-body person/avatar.
+- Every Codex state row must be generated as a multi-frame row strip using the original photo plus `canonical-base.png` as references.
+- Do not make a state by taking one generated pose and copying it into all frames.
+- Do not use local scripts to invent visual content, limbs, body poses, expressions, or action variants.
+- Local scripts may crop, remove chroma key, extract frames, mirror `running-left` only when visually safe, assemble the atlas, validate, and render previews.
+- If `$imagegen` cannot generate the needed base or row strips, stop and report the blocker instead of silently falling back to local collage or repeated static frames.
+
+## Codex State Design Flow
+
+Before generating animation rows, create or confirm a behavior map from the user's desired semantics to Codex fixed row names. The default event-aware map is:
+
+```text
+idle          <- normal/default pet state
+jumping       <- pointer hover over the mascot
+running-right <- dragging toward the right
+running-left  <- dragging toward the left
+running       <- active/running task
+waiting       <- waiting for user input
+failed        <- failed/blocked task
+review        <- completed task with unread result
+```
+
+Then write row-specific motion beats. For example, when the user wants default vacation, hover work, completion happy, running thinking/working, dragging cute, and exhaustion:
+
+```text
+idle          <- 度假 loop, 6 frames
+jumping       <- 办公 / 工作 hover loop, 5 frames
+review        <- 开心 completion loop, 6 frames
+running       <- 思考和办公交替 active-task loop, 6 frames
+running-right <- 撒娇 dragged-right loop, 8 frames
+running-left  <- 撒娇 dragged-left loop, 8 frames
+failed        <- 累瘫 loop, 8 frames
+waiting       <- 思考 / 等待 loop, 6 frames
+waving        <- 可选问候 / 可爱 loop, 4 frames
+```
+
+The final deliverable must include the installed `pet.json`, `spritesheet.webp`, a contact sheet, validation JSON, and a behavior map or action map saved under `_conversion_qa/` so future maintainers can see which Codex row corresponds to which user-facing behavior.
 
 ## Action Generation
 

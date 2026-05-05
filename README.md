@@ -273,6 +273,28 @@ Codex 桌宠当前是固定 9 行 atlas。语义动作会被映射进去：
 | `failed` | 累瘫 |
 | `waiting` | 思考 / 等待 |
 
+新版本的准备脚本会自动把这个流程写进 run 目录：
+
+```text
+<run-dir>/
+  codex-status-behavior-map.json
+  prompts/
+    base-character.md
+    actions/
+    codex-rows/
+      idle.md
+      running-right.md
+      running-left.md
+      waving.md
+      jumping.md
+      failed.md
+      waiting.md
+      running.md
+      review.md
+```
+
+推荐执行顺序是：先用上传/本地照片生成完整自然的 `canonical-base.png`，再用 `prompts/codex-rows/*.md` 逐行生成真正的多帧动画条，最后交给 `hatch-pet` 组装、校验、预览和安装。不要用本地脚本拼身体，也不要把一张姿势复制成整行动画。
+
 **4. 校验并安装**
 
 最后生成 `pet.json` 和 `spritesheet.webp`，并用 Codex pet 校验脚本检查：
@@ -627,6 +649,28 @@ For a behavior scheme like "vacation by default, work on hover, happy after comp
 | `running-left` | cute dragging-left loop |
 | `failed` | exhausted / collapsed |
 | `waiting` | thinking / waiting |
+
+The preparation script now writes this flow directly into the run directory:
+
+```text
+<run-dir>/
+  codex-status-behavior-map.json
+  prompts/
+    base-character.md
+    actions/
+    codex-rows/
+      idle.md
+      running-right.md
+      running-left.md
+      waving.md
+      jumping.md
+      failed.md
+      waiting.md
+      running.md
+      review.md
+```
+
+The recommended order is: generate a coherent full-body `canonical-base.png` from the uploaded/local photo, generate each real multi-frame animation strip from `prompts/codex-rows/*.md`, then let `hatch-pet` assemble, validate, preview, and install the pet. Do not locally paste a body onto a photo head, and do not copy one pose across an entire animation row.
 
 **4. Validates and installs**
 

@@ -78,6 +78,153 @@ ACTION_SPECS = {
         "pose": "angry or annoyed reaction pose, furrowed brow, clenched small fists, body leaning forward slightly",
         "avoid": "anger symbols, flames, text, violence, weapons",
     },
+    "撒娇": {
+        "english": "cute pleading",
+        "pose": "cute pleading pose with shy body sway, softened expression, small hand gesture close to the body",
+        "avoid": "hearts, speech bubbles, detached sparkles, oversized props, room scenery",
+    },
+    "累瘫": {
+        "english": "exhausted collapsed",
+        "pose": "exhausted collapsed or slumped pose, tired expression, body lowered naturally but still fully visible",
+        "avoid": "beds, large furniture, detached sleep symbols, injury, medical props, room scenery",
+    },
+}
+
+
+CODEX_ROWS = [
+    ("idle", 6),
+    ("running-right", 8),
+    ("running-left", 8),
+    ("waving", 4),
+    ("jumping", 5),
+    ("failed", 8),
+    ("waiting", 6),
+    ("running", 6),
+    ("review", 6),
+]
+
+
+DEFAULT_EVENT_BEHAVIOR = {
+    "idle": {
+        "event": "normal/default pet state",
+        "action": "度假",
+        "motion": "relaxed vacation breathing loop with subtle head, hand, and body shifts",
+        "beats": [
+            "relaxed vacation stance",
+            "small smile and blink",
+            "tiny hand or cup adjustment",
+            "gentle shoulder shift",
+            "returns toward relaxed stance",
+            "settles into loop start",
+        ],
+    },
+    "running-right": {
+        "event": "dragging toward the right",
+        "action": "撒娇",
+        "motion": "cute pleading drag-right loop with real rightward limb and body motion",
+        "beats": [
+            "leans right shyly",
+            "right foot steps",
+            "hands close to chest",
+            "small pleading look",
+            "body sways right",
+            "recovers balance",
+            "another small step",
+            "returns toward loop start",
+        ],
+    },
+    "running-left": {
+        "event": "dragging toward the left",
+        "action": "撒娇",
+        "motion": "cute pleading drag-left loop with real leftward limb and body motion",
+        "beats": [
+            "leans left shyly",
+            "left foot steps",
+            "hands close to chest",
+            "small pleading look",
+            "body sways left",
+            "recovers balance",
+            "another small step",
+            "returns toward loop start",
+        ],
+    },
+    "waving": {
+        "event": "optional greeting row",
+        "action": "撒娇",
+        "motion": "short cute greeting loop with hand gesture only",
+        "beats": [
+            "hands close to body",
+            "small shy hand lift",
+            "gentle cute gesture",
+            "hand returns",
+        ],
+    },
+    "jumping": {
+        "event": "pointer hover over the mascot",
+        "action": "办公",
+        "motion": "hover-triggered work loop with small laptop or document, not a literal jump",
+        "beats": [
+            "notices work",
+            "leans to small laptop or document",
+            "taps or writes",
+            "focused look",
+            "settles back to work stance",
+        ],
+    },
+    "failed": {
+        "event": "failed or blocked task",
+        "action": "累瘫",
+        "motion": "exhausted collapse loop with slumping, tired breathing, and partial recovery",
+        "beats": [
+            "tired upright pose",
+            "shoulders drop",
+            "knees bend or body lowers",
+            "slumps down naturally",
+            "tired blink",
+            "small recovery breath",
+            "still exhausted",
+            "settles collapsed",
+        ],
+    },
+    "waiting": {
+        "event": "waiting for user input",
+        "action": "思考",
+        "motion": "waiting/thinking loop with hand near chin, glance, blink, and return",
+        "beats": [
+            "hand near chin",
+            "slight head tilt",
+            "glance aside",
+            "blink",
+            "thoughtful pause",
+            "returns to first pose",
+        ],
+    },
+    "running": {
+        "event": "active/running task",
+        "action": "思考和办公轮换",
+        "motion": "active-task loop alternating thinking and working inside one row",
+        "beats": [
+            "thinking hand near chin",
+            "leans toward small laptop or document",
+            "working gesture",
+            "pauses and thinks again",
+            "returns to working",
+            "settles back toward frame 1",
+        ],
+    },
+    "review": {
+        "event": "completed task with unread result",
+        "action": "开心",
+        "motion": "completion loop with smile, small celebration, and happy settle",
+        "beats": [
+            "notices completion",
+            "smile grows",
+            "small celebratory arm lift",
+            "happy bounce or posture lift",
+            "relaxes into smile",
+            "returns toward loop start",
+        ],
+    },
 }
 
 
@@ -113,6 +260,46 @@ User notes: {notes or "None."}
 Composition: full-body character centered with generous padding. Keep any prop small, attached to or held by the character, and inside the sprite frame.
 Background: perfectly flat solid #00ff00 chroma-key background for background removal. No shadows, gradients, scenery, floor plane, or lighting variation.
 Avoid: {spec['avoid']}; no watermark, no logo, no text.
+"""
+
+
+def row_prompt(name: str, style: str, row: str, frames: int, behavior: dict[str, object], notes: str) -> str:
+    action = str(behavior["action"])
+    spec = ACTION_SPECS.get(
+        action,
+        {
+            "english": action,
+            "pose": f"clear {action} themed pose",
+            "avoid": "text, scenery, detached decorative symbols, large props",
+        },
+    )
+    beats = behavior.get("beats", [])
+    if not isinstance(beats, list) or len(beats) != frames:
+        beats = [f"frame {index + 1}: continue the {action} loop" for index in range(frames)]
+    beat_lines = "\n".join(f"- Frame {index + 1}: {beat}" for index, beat in enumerate(beats))
+    identity_lock = (
+        "Preserve the same person identity from the original photo and canonical full-body base: face shape, "
+        "hairstyle, glasses, expression family, clothing, colors, natural proportions, and silhouette. "
+        "Every frame must look like the same person and the same outfit."
+        if style == "realistic"
+        else "Preserve the same stylized character identity from the original photo and canonical base: hairstyle, glasses if present, outfit colors, face impression, proportions, and silhouette."
+    )
+    return f"""Use case: stylized-concept
+Asset type: Codex desktop pet animation row strip
+Primary request: Generate the `{row}` row for the pet named {name}.
+Codex event: {behavior['event']}.
+Semantic action: {action} / {spec['english']}.
+Required frame count: {frames} separate full-body frames in one horizontal strip.
+Identity lock: {identity_lock}
+Motion design: {behavior['motion']}.
+Frame beats:
+{beat_lines}
+Style notes: {style_notes(style)}
+User notes: {notes or "None."}
+Composition: one horizontal row strip with exactly {frames} evenly spaced full-body frames, generous padding in every frame, consistent scale and camera angle. Keep any prop small, held by or touching the character, and inside the frame.
+Animation rule: do not copy one static pose across frames. Each used frame must show visible, coherent body/limb/expression change and the final frame must loop naturally back toward frame 1.
+Background: perfectly flat solid #00ff00 chroma-key background for background removal. No shadows, gradients, scenery, floor plane, or lighting variation. Do not use #00ff00 anywhere in the subject.
+Avoid: {spec['avoid']}; no watermark, no logo, no text, no frame numbers, no grid lines, no UI, no separate backgrounds, no local collage look, no pasted photo head, no mismatched body.
 """
 
 
@@ -210,6 +397,36 @@ def main() -> None:
         )
         action_prompt_paths[action] = str(action_path)
 
+    behavior_map_path = run_dir / "codex-status-behavior-map.json"
+    behavior_map = {
+        "codex_event_mapping": {
+            row: {
+                "event": DEFAULT_EVENT_BEHAVIOR[row]["event"],
+                "semantic_action": DEFAULT_EVENT_BEHAVIOR[row]["action"],
+                "frames": frames,
+                "motion": DEFAULT_EVENT_BEHAVIOR[row]["motion"],
+            }
+            for row, frames in CODEX_ROWS
+        },
+        "implementation_rule": (
+            "Generate the canonical full-body base from the photo first, then generate each fixed Codex row as "
+            "a real multi-frame animation strip grounded by both the original photo and canonical base. Do not "
+            "create missing body parts by local collage, and do not copy one static pose across row frames."
+        ),
+    }
+    behavior_map_path.write_text(json.dumps(behavior_map, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    row_prompt_paths: dict[str, str] = {}
+    row_prompts_dir = prompts / "codex-rows"
+    row_prompts_dir.mkdir(parents=True, exist_ok=True)
+    for row, frames in CODEX_ROWS:
+        row_path = row_prompts_dir / f"{row}.md"
+        row_path.write_text(
+            row_prompt(args.pet_name, args.style, row, frames, DEFAULT_EVENT_BEHAVIOR[row], args.notes),
+            encoding="utf-8",
+        )
+        row_prompt_paths[row] = str(row_path)
+
     request = {
         "pet_name": args.pet_name,
         "pet_id": slug,
@@ -220,9 +437,11 @@ def main() -> None:
         "reference_photo": str(photo_copy),
         "base_prompt": str(prompt_path),
         "action_prompts": action_prompt_paths,
+        "codex_status_behavior_map": str(behavior_map_path),
+        "codex_row_prompts": row_prompt_paths,
         "run_dir": str(run_dir),
         "expected_pet_dir": str(codex_home() / "pets" / slug),
-        "next_step": "Use $imagegen with base_prompt and reference_photo, then use action_prompts plus the canonical base to generate action images/rows before continuing with $hatch-pet to package the pet.",
+        "next_step": "Use $imagegen with base_prompt and reference_photo to create the canonical full-body base. Then use codex_row_prompts with the original photo plus canonical base to generate true multi-frame row strips, and continue with $hatch-pet to assemble, validate, and install the pet.",
     }
     request_path = run_dir / "photo-pet-request.json"
     request_path.write_text(json.dumps(request, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
