@@ -10,7 +10,7 @@ description: Turn an uploaded or local person photo into a configured Codex desk
 Use this skill to create a Codex desktop pet from a person photo. The workflow supports two visual modes:
 
 - `cartoon`: compact chibi / pixel-adjacent Codex pet style.
-- `realistic`: photo-faithful mode that should match the source photo as closely as possible while only adapting it enough to become a full-body transparent Codex pet.
+- `realistic`: photo-faithful mode that should preserve the source photo as directly as possible while completing any missing body parts conservatively. Default to a foreground cutout made from the original photo for the visible face, hair, and outfit, then infer only the missing lower body from the visible clothing so the pet reads as a complete desktop character. Do not redraw the face or restyle the person unless the user explicitly asks for generated/repainted art.
 
 This skill composes two existing capabilities:
 
@@ -50,7 +50,25 @@ Use `--style realistic` for the photo-faithful realistic path.
 
 Use `--pet-id` when the display name contains non-ASCII characters. For example, use `--pet-name "小明2号" --pet-id xiaoming2`.
 
-4. Generate the base character with `$imagegen`.
+4. For `realistic`, first attempt a photo-faithful cutout workflow before using `$imagegen`.
+
+Use the original photo pixels as the canonical identity whenever possible:
+
+- Remove the background from the source photo with a mask, chroma key, segmentation, or other local image-processing method.
+- Preserve the original face, hair, outfit, colors, texture, and expression from the photo.
+- If the photo is a bust, ID photo, or half-body portrait, keep the visible face, hair, and torso as source-photo cutout pixels, then complete the missing lower body conservatively from the visible outfit. For example, a black blazer and white shirt can continue into a matching dark skirt/trousers, simple legs, socks, and shoes.
+- The completed lower body must be subordinate to the photo cutout: it should match the visible outfit colors and lighting, avoid new fashion choices, and never alter the face or upper-body identity.
+- Place the completed full-body or bust-plus-completed-body pet on transparent background inside each `192x208` cell.
+- For actions, prefer subtle pose transforms, small attached props, and slight offsets over facial redrawing. Keep the face unchanged unless the user explicitly wants expressive repainting.
+- If the background cannot be removed cleanly, stop and explain the blocker or use `$imagegen` only as a fallback with the prompt requiring maximum photo fidelity.
+
+The cutout should be saved as:
+
+```text
+<run-dir>/references/canonical-base.png
+```
+
+5. For `cartoon`, or when `realistic` cutout is impossible and the user accepts generated art, generate the base character with `$imagegen`.
 
 Use the prompt written to:
 
@@ -58,23 +76,23 @@ Use the prompt written to:
 <run-dir>/prompts/base-character.md
 ```
 
-Attach the uploaded/local photo as the reference image. The output should be a full-body pet character on a flat chroma-key background. Do not include text, logos, scenery, shadows, or UI.
+Attach the uploaded/local photo as the reference image. The output should be a full-body pet character on a flat chroma-key background. Do not include text, logos, scenery, shadows, or UI. In `realistic` fallback generation, explicitly preserve the original photo identity and outfit instead of redesigning the person.
 
-5. Record or copy the selected base image into the pet run as the canonical visual reference. If continuing through `$hatch-pet`, use its normal `record_imagegen_result.py` workflow. If adapting manually, keep the base image under:
+6. Record or copy the selected base image into the pet run as the canonical visual reference. If continuing through `$hatch-pet`, use its normal `record_imagegen_result.py` workflow. If adapting manually, keep the base image under:
 
 ```text
 <run-dir>/references/canonical-base.png
 ```
 
-6. Generate action images or action rows using the prompts written under:
+7. Generate action images or action rows using the prompts written under:
 
 ```text
 <run-dir>/prompts/actions/
 ```
 
-Attach both the original photo and `canonical-base.png` for each action prompt. The action images should preserve the same identity and outfit while changing pose, mood, or small held prop.
+Attach both the original photo and `canonical-base.png` for each action prompt. The action images should preserve the same identity and outfit while changing pose, mood, or small held prop. For `realistic` cutout mode, action rows should keep the original face and source-photo pixels as much as possible; do not redraw expressions such as anger or happiness if doing so harms likeness.
 
-7. Continue through `$hatch-pet` to generate or assemble animation rows, build the `1536x1872` atlas, validate, render QA, and package:
+8. Continue through `$hatch-pet` to generate or assemble animation rows, build the `1536x1872` atlas, validate, render QA, and package:
 
 ```text
 ${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/
@@ -82,7 +100,7 @@ ${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/
   spritesheet.webp
 ```
 
-8. Validate before final delivery:
+9. Validate before final delivery:
 
 ```bash
 python "${CODEX_HOME:-$HOME/.codex}/skills/hatch-pet/scripts/validate_atlas.py" \
@@ -90,7 +108,7 @@ python "${CODEX_HOME:-$HOME/.codex}/skills/hatch-pet/scripts/validate_atlas.py" 
   --json-out "${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/_conversion_qa/validation.json"
 ```
 
-9. Generate a contact sheet preview when the script is available:
+10. Generate a contact sheet preview when the script is available:
 
 ```bash
 python "${CODEX_HOME:-$HOME/.codex}/skills/hatch-pet/scripts/make_contact_sheet.py" \
@@ -98,7 +116,7 @@ python "${CODEX_HOME:-$HOME/.codex}/skills/hatch-pet/scripts/make_contact_sheet.
   --output "${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/_conversion_qa/contact-sheet.png"
 ```
 
-10. Tell the user to restart Codex App or reopen the desktop pet picker if it does not appear immediately.
+11. Tell the user to restart Codex App or reopen the desktop pet picker if it does not appear immediately.
 
 ## Action Generation
 
@@ -149,15 +167,16 @@ Perfectly flat solid chroma-key background, no shadows, no scenery, no text.
 For `realistic`, maximize fidelity to the photo. This mode should not redesign the person into a generic avatar. Preserve the reference as directly as possible:
 
 ```text
-Create a photo-faithful Codex desktop pet based on the reference person photo.
+Create a photo-faithful Codex desktop pet from the reference person photo.
+Default behavior: preserve the source photo pixels through foreground cutout and transparency cleanup, not generative redrawing.
 Match the person's visible appearance as closely as possible: face shape, hairstyle, hair volume and parting, glasses shape, expression, skin tone impression, clothing, colors, tie, suit texture, and overall posture.
-If the input photo is a headshot or half-body portrait, infer the missing lower body conservatively from the visible outfit instead of changing the identity.
-Keep realistic/semi-realistic rendering, natural proportions, and recognizable likeness. Do not chibi-fy, do not make the eyes oversized, do not turn the subject into an anime mascot, and do not invent a different outfit.
-Full body, centered, generous padding, transparent-ready.
-Perfectly flat solid chroma-key background, no shadows, no scenery, no text.
+If the input photo is a headshot, ID photo, or half-body portrait, keep the visible face, hair, and torso as source-photo cutout pixels, then complete the missing lower body conservatively from the visible clothing. Do not leave the pet as only a floating bust when the user asks for a desktop pet character.
+Keep natural proportions and recognizable likeness. Do not chibi-fy, do not make the eyes oversized, do not turn the subject into an anime mascot, do not invent a different outfit, and do not repaint the face unless explicitly requested. Any inferred lower body should be plain, matching, and less visually important than the original photo cutout.
+Centered complete character, generous padding, transparent-ready.
+No scenery, no text. Remove the source background instead of replacing the subject.
 ```
 
-For `realistic`, it is acceptable for the pet to look less like a cartoon and more like a clean cutout/avatar, as long as the final atlas remains readable at desktop-pet size.
+For `realistic`, it is preferable for the pet to look like a clean photo cutout/avatar with a conservatively completed body rather than a cartoon. The final atlas must remain readable at desktop-pet size, but likeness takes priority over adding exaggerated animation or expressions.
 
 ## Configuration
 
