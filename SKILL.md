@@ -29,6 +29,7 @@ Optional:
 - Pet name.
 - Short personality or accessory notes.
 - Semantic action set, such as `办公,休息,思考,游戏,度假,开心,生气`. If omitted, use those seven defaults.
+- Event behavior preferences, such as normal/default, hover, completed, running, dragging, random/error, or waiting states.
 - Output folder. Default to `${CODEX_HOME:-$HOME/.codex}/pet-runs/<slug>` for the run and `${CODEX_HOME:-$HOME/.codex}/pets/<slug>` for the installed pet.
 
 ## Workflow
@@ -84,13 +85,27 @@ Attach the uploaded/local photo as the reference image. The output should be a f
 <run-dir>/references/canonical-base.png
 ```
 
-7. Generate action images or action rows using the prompts written under:
+7. Generate action rows using the prompts written under:
 
 ```text
 <run-dir>/prompts/actions/
 ```
 
-Attach both the original photo and `canonical-base.png` for each action prompt. The action images should preserve the same identity and outfit while changing pose, mood, or small held prop. For `realistic`, action rows should look like the same full-body person in a coherent realistic style; do not create a pasted-photo face on a mismatched drawn body.
+Attach both the original photo and `canonical-base.png` for each action prompt. The action rows should preserve the same identity and outfit while changing pose, mood, or small held prop. For `realistic`, action rows should look like the same full-body person in a coherent realistic style; do not create a pasted-photo face on a mismatched drawn body.
+
+Important: do not satisfy an animated state by generating one static pose and copying it across every frame. Each fixed Codex row must be a coherent multi-frame strip:
+
+- `idle`: 6 frames.
+- `running-right`: 8 frames.
+- `running-left`: 8 frames.
+- `waving`: 4 frames.
+- `jumping`: 5 frames.
+- `failed`: 8 frames.
+- `waiting`: 6 frames.
+- `running`: 6 frames.
+- `review`: 6 frames.
+
+Every used frame in a row should show a small but real pose/expression/limb change, then return cleanly to the loop start. Repeated frames are acceptable only as brief holds at the beginning or end of a motion, not as the whole row.
 
 8. Continue through `$hatch-pet` to generate or assemble animation rows, build the `1536x1872` atlas, validate, render QA, and package:
 
@@ -151,6 +166,53 @@ review        <- 办公 or 思考
 ```
 
 Extra actions such as `游戏` and `度假` can be included as alternate rows, preview assets, or used to replace the least relevant fixed row when the user explicitly prefers them.
+
+Codex desktop currently plays these rows from hardcoded UI events:
+
+```text
+idle          <- normal/default pet state
+jumping       <- pointer hover over the mascot
+running-right <- dragging toward the right
+running-left  <- dragging toward the left
+running       <- an active/running task
+waiting       <- waiting for user input
+failed        <- failed/blocked task
+review        <- completed task with unread result
+```
+
+If the user asks for a behavior scheme like:
+
+```text
+正常情况下处于度假状态；鼠标移上去变成工作状态；工作完成时开心；
+运行程序时思考和工作轮换；拖动时撒娇；有时累瘫。
+```
+
+map it into the fixed rows like this:
+
+```text
+idle          <- 度假 loop
+jumping       <- 办公 / 工作 loop, because hover triggers jumping
+review        <- 开心 loop, because completion/unread result triggers review
+running       <- 思考和办公交替 loop, because active tasks trigger running
+running-right <- 撒娇 dragged-right loop
+running-left  <- 撒娇 dragged-left loop
+failed        <- 累瘫 loop
+waiting       <- 思考 or 等待 loop
+waving        <- optional greeting/cute loop, used only when that row is explicitly displayed
+```
+
+For the `running` row in that scheme, generate one 6-frame strip whose frames alternate within the same row, for example:
+
+```text
+1 thinking hand near chin
+2 leans toward small laptop/document
+3 working gesture
+4 pauses and thinks again
+5 returns to working
+6 settles back toward frame 1
+```
+
+This is the supported way to combine "thinking and working rotation" without app-level row switching.
 
 ## Prompt Rules
 

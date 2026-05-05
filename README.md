@@ -258,6 +258,21 @@ Codex 桌宠当前是固定 9 行 atlas。语义动作会被映射进去：
 | `running` | 游戏或通用运动 |
 | `review` | 办公 / 思考 |
 
+每一行都应该是动作序列，而不是把一张静态姿势复制多次。Codex 固定读取这些帧数：`idle` 6 帧、`running-right` 8 帧、`running-left` 8 帧、`waving` 4 帧、`jumping` 5 帧、`failed` 8 帧、`waiting` 6 帧、`running` 6 帧、`review` 6 帧。每个状态应在同一行内完成自然的小循环。
+
+如果想把桌宠配置成“默认度假、鼠标悬停工作、完成后开心、运行中思考和办公轮换、拖动时撒娇、失败或偶发时累瘫”，按 Codex 当前硬编码事件映射：
+
+| Codex 行 | 推荐语义 |
+|---|---|
+| `idle` | 度假 |
+| `jumping` | 办公 / 工作，因为鼠标悬停触发这一行 |
+| `review` | 开心，因为完成且有未读结果触发这一行 |
+| `running` | 思考和办公在同一行内交替 |
+| `running-right` | 向右拖动时撒娇 |
+| `running-left` | 向左拖动时撒娇 |
+| `failed` | 累瘫 |
+| `waiting` | 思考 / 等待 |
+
 **4. 校验并安装**
 
 最后生成 `pet.json` 和 `spritesheet.webp`，并用 Codex pet 校验脚本检查：
@@ -597,6 +612,21 @@ Codex desktop pets currently use a fixed 9-row atlas. Semantic actions are mappe
 | `waiting` | resting / thinking |
 | `running` | gaming or generic motion |
 | `review` | working / thinking |
+
+Each row should be a motion sequence, not one static pose copied into every frame. Codex reads these fixed frame counts: `idle` 6 frames, `running-right` 8, `running-left` 8, `waving` 4, `jumping` 5, `failed` 8, `waiting` 6, `running` 6, and `review` 6. Each state should complete a natural loop inside its own row.
+
+For a behavior scheme like "vacation by default, work on hover, happy after completion, thinking/working while running, cute while dragging, exhausted on failures or occasional tired states", use Codex's current hardcoded event mapping:
+
+| Codex Row | Recommended Meaning |
+|---|---|
+| `idle` | vacation |
+| `jumping` | work / office, because hover triggers this row |
+| `review` | happy, because completed unread work triggers this row |
+| `running` | thinking and working alternating inside the same row |
+| `running-right` | cute dragging-right loop |
+| `running-left` | cute dragging-left loop |
+| `failed` | exhausted / collapsed |
+| `waiting` | thinking / waiting |
 
 **4. Validates and installs**
 
